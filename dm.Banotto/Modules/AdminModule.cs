@@ -37,15 +37,16 @@ namespace dm.Banotto
             var roundType = ParseRoundType(msg);
             var item = await _db.Rounds
                 .Where(x => x.RoundStatus == RoundStatus.Open)
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync()
+                .ConfigureAwait(false);
             if (item == null)
             {
-                await OpenRound(roundType);
+                await OpenRound(roundType).ConfigureAwait(false);
             }
             else
             {
                 string roundTypeStr = Utils.GetRoundTypeName(item.RoundType);
-                await ReplyAsync($"Round #{item.RoundId} (**{roundTypeStr}**) still open.");
+                await ReplyAsync($"Round #{item.RoundId} (**{roundTypeStr}**) still open.").ConfigureAwait(false);
             }
         }
 
@@ -116,13 +117,13 @@ namespace dm.Banotto
                 RoundType = roundType
             };
             _db.Rounds.Add(r);
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync().ConfigureAwait(false);
 
             string roundTypeStr = Utils.GetRoundTypeName(roundType);
             var client = Context.Client as DiscordSocketClient;
-            await client.SetGameAsync($"{roundTypeStr} LOTTO");
-            await RoundStart(r, game);
-            await UnmuteChannel();
+            await client.SetGameAsync($"{roundTypeStr} LOTTO").ConfigureAwait(false);
+            await RoundStart(r, game).ConfigureAwait(false);
+            await UnmuteChannel().ConfigureAwait(false);
         }
 
         private async Task RoundStart(Round round, Game game)
@@ -172,7 +173,15 @@ namespace dm.Banotto
                     "**Refund not guaranteed.**");
             var embed = builder.Build();
 
-            await Context.Channel.SendMessageAsync(string.Empty, embed: embed).ConfigureAwait(false);
+            var msg = await Context.Channel.SendMessageAsync(string.Empty, embed: embed).ConfigureAwait(false);
+
+            var pins = await msg.Channel.GetPinnedMessagesAsync().ConfigureAwait(false);
+            var botPins = pins.Where(x => x.Author.Id == Context.Client.CurrentUser.Id);
+            foreach (IUserMessage pin in botPins)
+            {
+                await pin.UnpinAsync().ConfigureAwait(false);
+            }
+            await msg.PinAsync().ConfigureAwait(false);
         }
 
         [Command("status"), Summary("Round status.")]
@@ -181,15 +190,16 @@ namespace dm.Banotto
             var item = await _db.Rounds
                 .OrderByDescending(x => x.Created)
                 .Include(x => x.Bets)
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync()
+                .ConfigureAwait(false);
             if (item == null)
             {
-                await ReplyAsync($"No rounds.");
+                await ReplyAsync($"No rounds.").ConfigureAwait(false);
             }
             else
             {
                 string roundTypeStr = Utils.GetRoundTypeName(item.RoundType);
-                var user = await Context.Channel.GetUserAsync(item.DealerId);
+                var user = await Context.Channel.GetUserAsync(item.DealerId).ConfigureAwait(false);
                 string footerText = string.Empty;
                 string subText = string.Empty;
                 switch (item.RoundStatus)
@@ -238,7 +248,8 @@ namespace dm.Banotto
         {
             var item = await _db.Rounds
                 .OrderByDescending(x => x.Created)
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync()
+                .ConfigureAwait(false);
             if (item == null || item.RoundStatus == RoundStatus.Complete)
             {
                 var builder = new EmbedBuilder()
@@ -255,13 +266,13 @@ namespace dm.Banotto
 
                 var msg = await Context.Channel.SendMessageAsync(string.Empty, embed: embed).ConfigureAwait(false);
 
-                await msg.AddReactionAsync(new Emoji("\U00000031\U000020e3"));
-                await msg.AddReactionAsync(new Emoji("\U00000032\U000020e3"));
-                await msg.AddReactionAsync(new Emoji("\U00000033\U000020e3"));
+                await msg.AddReactionAsync(new Emoji("\U00000031\U000020e3")).ConfigureAwait(false);
+                await msg.AddReactionAsync(new Emoji("\U00000032\U000020e3")).ConfigureAwait(false);
+                await msg.AddReactionAsync(new Emoji("\U00000033\U000020e3")).ConfigureAwait(false);
             }
             else
             {
-                await ReplyAsync($"Round is still open, no need for poll <:bebe:463390590382505994>");
+                await ReplyAsync($"Round is still open, no need for poll <:bebe:463390590382505994>").ConfigureAwait(false);
             }
 
         }
@@ -272,7 +283,8 @@ namespace dm.Banotto
             var item = await _db.Rounds
                 .Where(x => x.RoundStatus == RoundStatus.Open)
                 .Include(x => x.Bets)
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync()
+                .ConfigureAwait(false);
             item.Bets.RemoveAll(x => x.Confirmed != true);
             if (item != null)
             {
@@ -285,7 +297,7 @@ namespace dm.Banotto
                     string rollEmoji = GenRollEmoji(item.Roll1, item.Roll2, item.Roll3);
                     string s = (item.TotalBets != 1) ? "s" : string.Empty;
 
-                    await MuteChannel();
+                    await MuteChannel().ConfigureAwait(false);
 
                     // send roll update to main channel
                     var builder2 = new EmbedBuilder()
@@ -306,21 +318,21 @@ namespace dm.Banotto
 
                     await Context.Channel.SendMessageAsync(string.Empty, embed: embed2).ConfigureAwait(false);
 
-                    await CompleteRound(item);
+                    await CompleteRound(item).ConfigureAwait(false);
                 }
                 else
                 {
                     item.RoundStatus = RoundStatus.Complete;
                     item.Completed = DateTime.Now;
                     item.TotalWinners = 0;
-                    await MuteChannel();
-                    await ReplyAsync($"Round #{item.RoundId} closed, no bets placed. <:meh:463390590390763540>");
+                    await MuteChannel().ConfigureAwait(false);
+                    await ReplyAsync($"Round #{item.RoundId} closed, no bets placed. <:meh:463390590390763540>").ConfigureAwait(false);
                 }
                 _db.Rounds.Update(item);
-                await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync().ConfigureAwait(false);
 
                 // send update to fair channel
-                var fairChan = await Context.Guild.GetTextChannelAsync(_config.FairChannelId);
+                var fairChan = await Context.Guild.GetTextChannelAsync(_config.FairChannelId).ConfigureAwait(false);
                 var builder = new EmbedBuilder()
                     .WithColor(Color.SHIELD)
                     .WithFooter(footer =>
@@ -343,11 +355,11 @@ namespace dm.Banotto
             }
             else
             {
-                await ReplyAsync($"No round open.");
+                await ReplyAsync($"No round open.").ConfigureAwait(false);
             }
 
             var client = Context.Client as DiscordSocketClient;
-            await client.SetGameAsync("CLOSED");
+            await client.SetGameAsync("CLOSED").ConfigureAwait(false);
         }
 
         private string GenRollEmoji(int? roll1, int? roll2, int? roll3)
@@ -374,7 +386,7 @@ namespace dm.Banotto
             round.RoundStatus = RoundStatus.Complete;
             round.Completed = DateTime.Now;
             _db.Update(round);
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync().ConfigureAwait(false);
 
             var chan = Context.Channel;
             List<Bet> strWins = new List<Bet>();
@@ -438,38 +450,38 @@ namespace dm.Banotto
             if (round.TotalWinners > 0)
             {
                 string s = (round.TotalWinners > 1) ? "s" : string.Empty;
-                await chan.SendMessageAsync($"{round.TotalWinners} total winner{s}! <:thonkerguns:463390590240030721>");
+                await chan.SendMessageAsync($"{round.TotalWinners} total winner{s}! <:thonkerguns:463390590240030721>").ConfigureAwait(false);
                 foreach (var w in strWins)
                 {
-                    var user = await chan.GetUserAsync(w.UserId);
+                    var user = await chan.GetUserAsync(w.UserId).ConfigureAwait(false);
                     int multi = (round.RoundType == RoundType.Pick3) ? PICK3_MULTI_STRAIGHT : PICK2_MULTI_STRAIGHT;
-                    await chan.SendMessageAsync($"{user.Mention} WON {(w.Amount * multi).AddCommas()}!! Play: Straight '{w.Pick1}{w.Pick2}{w.Pick3}'");
+                    await chan.SendMessageAsync($"{user.Mention} WON {(w.Amount * multi).AddCommas()}!! Play: Straight '{w.Pick1}{w.Pick2}{w.Pick3}'").ConfigureAwait(false);
                     w.Winner = true;
                     _db.Update(w);
                 }
                 foreach (var w in anyWins)
                 {
-                    var user = await chan.GetUserAsync(w.UserId);
+                    var user = await chan.GetUserAsync(w.UserId).ConfigureAwait(false);
                     int multi = (round.RoundType == RoundType.Pick3) ? PICK3_MULTI_ANY : PICK2_MULTI_ANY;
-                    await chan.SendMessageAsync($"{user.Mention} WON {(w.Amount * multi).AddCommas()}!! Play: Any '{w.Pick1}{w.Pick2}{w.Pick3}'");
+                    await chan.SendMessageAsync($"{user.Mention} WON {(w.Amount * multi).AddCommas()}!! Play: Any '{w.Pick1}{w.Pick2}{w.Pick3}'").ConfigureAwait(false);
                     w.Winner = true;
                     _db.Update(w);
                 }
                 foreach (var w in sngWins)
                 {
-                    var user = await chan.GetUserAsync(w.UserId);
-                    await chan.SendMessageAsync($"{user.Mention} WON {(w.Amount * PICK1_MULTI_SINGLE).AddCommas()}!! Play: Single '{w.Pick1}'");
+                    var user = await chan.GetUserAsync(w.UserId).ConfigureAwait(false);
+                    await chan.SendMessageAsync($"{user.Mention} WON {(w.Amount * PICK1_MULTI_SINGLE).AddCommas()}!! Play: Single '{w.Pick1}'").ConfigureAwait(false);
                     w.Winner = true;
                     _db.Update(w);
                 }
-                await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync().ConfigureAwait(false);
 
-                var dealer = await chan.GetUserAsync(round.DealerId);
-                await chan.SendMessageAsync($"{dealer.Mention} will pay out these winners shortly.");
+                var dealer = await chan.GetUserAsync(round.DealerId).ConfigureAwait(false);
+                await chan.SendMessageAsync($"{dealer.Mention} will pay out these winners shortly.").ConfigureAwait(false);
             }
             else
             {
-                await chan.SendMessageAsync($"No winners this round. <:bebe:463390590382505994>");
+                await chan.SendMessageAsync($"No winners this round. <:bebe:463390590382505994>").ConfigureAwait(false);
             }
 
             return;
@@ -482,13 +494,13 @@ namespace dm.Banotto
             switch (roundType)
             {
                 case RoundType.Pick1:
-                    //await ReplyAsync(Utils.BanHelpPick1(_config.BanMinBet1, _config.BanMaxBet1, Context.User.Username, _config.BanSeconds1));
+                    //await ReplyAsync(Utils.BanHelpPick1(_config.BanMinBet1, _config.BanMaxBet1, Context.User.Username, _config.BanSeconds1)).ConfigureAwait(false);
                     break;
                 case RoundType.Pick2:
-                    //await ReplyAsync(Utils.BanHelpPick2(_config.BanMinBet2, _config.BanMaxBet2, Context.User.Username, _config.BanSeconds2));
+                    //await ReplyAsync(Utils.BanHelpPick2(_config.BanMinBet2, _config.BanMaxBet2, Context.User.Username, _config.BanSeconds2)).ConfigureAwait(false);
                     break;
                 case RoundType.Pick3:
-                    //await ReplyAsync(Utils.BanHelpPick3(_config.BanMinBet3, _config.BanMaxBet3, Context.User.Username, _config.BanSeconds3));
+                    //await ReplyAsync(Utils.BanHelpPick3(_config.BanMinBet3, _config.BanMaxBet3, Context.User.Username, _config.BanSeconds3)).ConfigureAwait(false);
                     break;
             }
             return;
@@ -514,7 +526,7 @@ namespace dm.Banotto
             var chan = (IGuildChannel)Context.Channel;
             var perms = new OverwritePermissions(sendMessages: PermValue.Inherit);
             var role = Context.Guild.GetRole(_config.PlayerRoleId);
-            await chan.AddPermissionOverwriteAsync(role, perms);
+            await chan.AddPermissionOverwriteAsync(role, perms).ConfigureAwait(false);
         }
 
         private async Task MuteChannel()
@@ -522,7 +534,7 @@ namespace dm.Banotto
             var chan = (IGuildChannel)Context.Channel;
             var perms = new OverwritePermissions(sendMessages: PermValue.Deny);
             var role = Context.Guild.GetRole(_config.PlayerRoleId);
-            await chan.AddPermissionOverwriteAsync(role, perms);
+            await chan.AddPermissionOverwriteAsync(role, perms).ConfigureAwait(false);
         }
     }
 }

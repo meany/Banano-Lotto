@@ -29,20 +29,20 @@ namespace dm.Banotto
         [Command("bet"), Summary("Place bet."), RequireContext(ContextType.Guild)]
         public async Task Bet([Remainder] string msg)
         {
-            await Tip(msg);
+            await Tip(msg).ConfigureAwait(false);
         }
 
         [Command("t"), Summary("Place bet."), RequireContext(ContextType.Guild)]
         public async Task T([Remainder] string msg)
         {
-            await Tip(msg);
+            await Tip(msg).ConfigureAwait(false);
         }
 
         [Command("tip"), Summary("Place bet."), RequireContext(ContextType.Guild)]
         public async Task Tip([Remainder] string msg)
         {
             var b = ParseBet(msg);
-            await MakeBet(b);
+            await MakeBet(b).ConfigureAwait(false);
         }
 
         private async Task MakeBet(BetCommand b)
@@ -50,14 +50,15 @@ namespace dm.Banotto
             if (Context.Message.MentionedUserIds.Count == 1)
             {
                 ulong mentionedId = Context.Message.MentionedUserIds.First();
-                var dealer = await Context.Guild.GetUserAsync(mentionedId);
+                var dealer = await Context.Guild.GetUserAsync(mentionedId).ConfigureAwait(false);
                 try
                 {
                     var round = await _db.Rounds
                         .AsNoTracking()
                         .Where(x => x.RoundStatus == RoundStatus.Open)
                         .Include(x => x.Bets)
-                        .FirstOrDefaultAsync();
+                        .FirstOrDefaultAsync()
+                        .ConfigureAwait(false);
                     if (round != null && round.DealerId == mentionedId)
                     {
                         int min = 0;
@@ -86,13 +87,13 @@ namespace dm.Banotto
                                 if (b.Pick1 >= 0 && b.Pick1 <= 9 &&
                                     (b.Quick || (!b.Pick2.HasValue && !b.Pick3.HasValue)))
                                 {
-                                    await MakeBetDb(b, round);
+                                    await MakeBetDb(b, round).ConfigureAwait(false);
                                 }
                                 else
                                 {
                                     await SendBetError(round, roundTypeStr,
                                         $"Picks not parsed (out of range, 0 - 9)\n" +
-                                            string.Format(REFUND, dealer));
+                                            string.Format(REFUND, dealer)).ConfigureAwait(false);
                                 }
                             }
                             else if (round.RoundType == RoundType.Pick2)
@@ -101,13 +102,13 @@ namespace dm.Banotto
                                     b.Pick1 <= 9 && b.Pick2 <= 9 &&
                                     (b.Quick || !b.Pick3.HasValue))
                                 {
-                                    await MakeBetDb(b, round);
+                                    await MakeBetDb(b, round).ConfigureAwait(false);
                                 }
                                 else
                                 {
                                     await SendBetError(round, roundTypeStr,
                                         $"Picks not parsed (out of range, 00 - 99)\n" +
-                                            string.Format(REFUND, dealer));
+                                            string.Format(REFUND, dealer)).ConfigureAwait(false);
                                 }
                             }
                             else if (round.RoundType == RoundType.Pick3)
@@ -115,13 +116,13 @@ namespace dm.Banotto
                                 if (b.Pick1 >= 0 && b.Pick2 >= 0 && b.Pick3 >= 0 &&
                                     b.Pick1 <= 9 && b.Pick2 <= 9 && b.Pick3 <= 9)
                                 {
-                                    await MakeBetDb(b, round);
+                                    await MakeBetDb(b, round).ConfigureAwait(false);
                                 }
                                 else
                                 {
                                     await SendBetError(round, roundTypeStr,
                                         $"Picks not parsed (out of range, 000 - 999)\n" +
-                                            string.Format(REFUND, dealer));
+                                            string.Format(REFUND, dealer)).ConfigureAwait(false);
                                 }
                             }
                         }
@@ -130,7 +131,7 @@ namespace dm.Banotto
                             string playType = (round.RoundType == RoundType.Pick1) ? PlayType.Single.ToString() : b.PlayType.Value.ToString();
                             await SendBetError(round, roundTypeStr,
                                 $"Bet amount not parsed (out of range, {min} - {max} for {playType} play)\n" +
-                                string.Format(REFUND, dealer));
+                                string.Format(REFUND, dealer)).ConfigureAwait(false);
                         }
                     }
                 }
@@ -189,7 +190,7 @@ namespace dm.Banotto
                 UserId = Context.User.Id
             };
             _db.Bets.Add(bet);
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync().ConfigureAwait(false);
         }
 
         private BetCommand ParseBet(string msg)

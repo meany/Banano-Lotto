@@ -52,9 +52,9 @@ namespace dm.Banotto
             {
                 if (message.HasCharPrefix('$', ref argPos))
                 {
-                    var result = await _commands.ExecuteAsync(context, argPos, _services);
+                    var result = await _commands.ExecuteAsync(context, argPos, _services).ConfigureAwait(false);
                     if (!result.IsSuccess && result.Error != CommandError.UnknownCommand)
-                        await context.Channel.SendMessageAsync(result.ErrorReason);
+                        await context.Channel.SendMessageAsync(result.ErrorReason).ConfigureAwait(false);
                     return;
                 }
             }
@@ -64,7 +64,8 @@ namespace dm.Banotto
                 .AsNoTracking()
                 .OrderByDescending(x => x.Created)
                 .Include(x => x.Bets)
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync()
+                .ConfigureAwait(false);
 
             if (round.RoundStatus == RoundStatus.Open)
             {
@@ -85,9 +86,9 @@ namespace dm.Banotto
                 {
                     if (message.HasStringPrefix(p, ref argPos, StringComparison.OrdinalIgnoreCase))
                     {
-                        var result = await _commands.ExecuteAsync(context, 1, _services);
+                        var result = await _commands.ExecuteAsync(context, 1, _services).ConfigureAwait(false);
                         if (!result.IsSuccess && result.Error != CommandError.UnknownCommand)
-                            await context.Channel.SendMessageAsync(result.ErrorReason);
+                            await context.Channel.SendMessageAsync(result.ErrorReason).ConfigureAwait(false);
                         return;
                     }
                 }
@@ -105,7 +106,7 @@ namespace dm.Banotto
                 await _client.CurrentUser.ModifyAsync(x =>
                 {
                     x.Username = _config.BotName;
-                });
+                }).ConfigureAwait(false);
             }
         }
 
@@ -121,7 +122,8 @@ namespace dm.Banotto
                 var item = await _db.Bets
                     .Where(x => x.UserBetMessageId == reaction.MessageId)
                     .Include(x => x.Round)
-                    .FirstOrDefaultAsync();
+                    .FirstOrDefaultAsync()
+                    .ConfigureAwait(false);
                 if (item.BetId > 0)
                 {
                     var betMsg = reaction.Channel.GetCachedMessage(item.UserBetMessageId);
@@ -129,11 +131,11 @@ namespace dm.Banotto
 
                     if (reaction.Emote.Name == _config.EmoteGood)
                     {
-                        await BetConfirmation(item, betMsg, user);
+                        await BetConfirmation(item, betMsg, user).ConfigureAwait(false);
                     }
                     else if (reaction.Emote.Name == _config.EmoteBad)
                     {
-                        await DeleteBet(item);
+                        await DeleteBet(item).ConfigureAwait(false);
                     }
                 }
             }
@@ -176,9 +178,11 @@ namespace dm.Banotto
                     break;
             }
 
+            bool first = false;
             if (!item.Round.Ends.HasValue)
             {
                 item.Round.Ends = DateTime.Now.AddSeconds(secs);
+                first = true;
             }
 
             int secsLeft = (int)(item.Round.Ends.Value - DateTime.Now).TotalSeconds + 1;
@@ -204,18 +208,21 @@ namespace dm.Banotto
 
             item.Confirmed = true;
             _db.Update(item);
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync().ConfigureAwait(false);
 
-            var context = new CommandContext(_client, (IUserMessage)betMsg);
-            _ = Task.Delay(secsLeft * 1000)
-                .ContinueWith(_ => _commands.ExecuteAsync(context, "close", _services).ConfigureAwait(false))
-                .ConfigureAwait(false);
+            if (first)
+            {
+                var context = new CommandContext(_client, (IUserMessage)betMsg);
+                _ = Task.Delay(secsLeft * 1000)
+                    .ContinueWith(_ => _commands.ExecuteAsync(context, "close", _services).ConfigureAwait(false))
+                    .ConfigureAwait(false);
+            }
         }
 
         private async Task DeleteBet(Bet item)
         {
             _db.Bets.Remove(item);
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync().ConfigureAwait(false);
         }
     }
 }

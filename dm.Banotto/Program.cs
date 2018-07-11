@@ -51,10 +51,10 @@ namespace dm.Banotto
             db = services.GetService<AppDbContext>();
             DbInitializer.Initialize(db).Wait();
 
-            await Install();
-            await Start();
+            await Install().ConfigureAwait(false);
+            await Start().ConfigureAwait(false);
 
-            await Task.Delay(-1);
+            await Task.Delay(-1).ConfigureAwait(false);
         }
 
         private Task Log(LogMessage msg)
@@ -69,26 +69,27 @@ namespace dm.Banotto
             client.Connected += events.HandleConnected;
             client.MessageReceived += events.HandleCommand;
             client.ReactionAdded += events.HandleReaction;
-            await commands.AddModulesAsync(Assembly.GetEntryAssembly());
+            await commands.AddModulesAsync(Assembly.GetEntryAssembly()).ConfigureAwait(false);
         }
 
         private async Task Start()
         {
-            await client.LoginAsync(TokenType.Bot, config.Token);
-            await client.StartAsync();
+            await client.LoginAsync(TokenType.Bot, config.Token).ConfigureAwait(false);
+            await client.StartAsync().ConfigureAwait(false);
 
             var item = await db.Rounds
                 .Where(x => x.RoundStatus == RoundStatus.Open)
                 .Include(x => x.Bets)
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync()
+                .ConfigureAwait(false);
             if (item != null)
             {
                 string roundTypeStr = Utils.GetRoundTypeName(item.RoundType);
-                await client.SetGameAsync($"{roundTypeStr} LOTTO");
+                await client.SetGameAsync($"{roundTypeStr} LOTTO").ConfigureAwait(false);
             }
             else
             {
-                await client.SetGameAsync("CLOSED");
+                await client.SetGameAsync("CLOSED").ConfigureAwait(false);
             }
         }
     }

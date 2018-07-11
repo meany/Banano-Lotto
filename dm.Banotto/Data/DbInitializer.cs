@@ -40,7 +40,7 @@ namespace dm.Banotto.Data
                         tx.Rollback();
                     }
                 }
-            });
+            }).ConfigureAwait(false);
         }
     }
 }
