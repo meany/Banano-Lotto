@@ -155,15 +155,16 @@ namespace dm.Banotto
             }
 
             var builder = new EmbedBuilder()
-                .WithColor(new Color(0xE04F5F))
+                .WithColor(Color.ERROR)
                 .WithFooter(footer =>
                 {
-                    footer.WithText(footerText);
+                    footer.WithText(footerText)
+                        .WithIconUrl(Asset.CLOCK);
                 })
                 .WithAuthor(author =>
                 {
                     author.WithName($"Pick Number Lotto | Round #{round.RoundId} ({roundTypeStr})")
-                        .WithIconUrl("https://media.discordapp.net/attachments/463783547900264498/463884586351329281/error.png");
+                        .WithIconUrl(Asset.ERROR);
                 })
                 .AddField("Bet Error", errorText);
             var embed = builder.Build();

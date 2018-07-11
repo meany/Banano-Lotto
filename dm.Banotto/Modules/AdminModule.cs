@@ -152,10 +152,11 @@ namespace dm.Banotto
             }
 
             var builder = new EmbedBuilder()
-                .WithColor(new Color(0xE5EA0F))
+                .WithColor(Color.LOTTO_BOT)
                 .WithFooter(footer =>
                 {
-                    footer.WithText($"Roll Hash (SHA-256): {round.RollHash}");
+                    footer.WithText($"Roll Hash (SHA-256): {round.RollHash}")
+                        .WithIconUrl(Asset.SHIELD);
                 })
                 .WithAuthor(author =>
                 {
@@ -216,13 +217,14 @@ namespace dm.Banotto
                 }
 
                 var builder = new EmbedBuilder()
-                    .WithColor(new Color(0x74B3FF))
+                    .WithColor(Color.INFO)
                     .WithFooter(footer => {
-                        footer.WithText(footerText);
+                        footer.WithText(footerText)
+                            .WithIconUrl(Asset.CLOCK);
                     })
                     .WithAuthor(author => {
                         author.WithName($"Pick Number Lotto | Round #{item.RoundId} ({roundTypeStr})")
-                            .WithIconUrl("https://media.discordapp.net/attachments/463783547900264498/464556761945210900/info.png");
+                            .WithIconUrl(Asset.INFO);
                     })
                     .AddField(item.RoundStatus.ToString(), subText);
                 var embed = builder.Build();
@@ -239,10 +241,20 @@ namespace dm.Banotto
                 .FirstOrDefaultAsync();
             if (item == null || item.RoundStatus == RoundStatus.Complete)
             {
-                var msg = await ReplyAsync($"What game should we run next?\n" +
-                    $":one: **PICK 1** *(1 minute round, 9x your bet)*\n" +
-                    $":two: **PICK 2** *(10 minute round, 50x your bet)*\n" +
-                    $":three: **PICK 3** *(60 minute round, 500x your bet)*");
+                var builder = new EmbedBuilder()
+                    .WithColor(Color.INFO)
+                    .WithAuthor(author => {
+                        author.WithName("Pick Number Lotto Poll")
+                            .WithIconUrl(Asset.INFO);
+                    })
+                    .AddField("What game should we run next?",
+                        ":one: **PICK 1** *(1 minute round, 9x your bet)*\n" +
+                        ":two: **PICK 2** *(10 minute round, 50x your bet)*\n" +
+                        ":three: **PICK 3** *(60 minute round, 500x your bet)*");
+                var embed = builder.Build();
+
+                var msg = await Context.Channel.SendMessageAsync(string.Empty, embed: embed).ConfigureAwait(false);
+
                 await msg.AddReactionAsync(new Emoji("\U00000031\U000020e3"));
                 await msg.AddReactionAsync(new Emoji("\U00000032\U000020e3"));
                 await msg.AddReactionAsync(new Emoji("\U00000033\U000020e3"));
@@ -277,10 +289,11 @@ namespace dm.Banotto
 
                     // send roll update to main channel
                     var builder2 = new EmbedBuilder()
-                        .WithColor(new Color(0xE5EA0F))
+                        .WithColor(Color.LOTTO_BOT)
                         .WithFooter(footer =>
                         {
-                            footer.WithText($"Roll salt: {item.RollSalt}");
+                            footer.WithText($"Roll salt: {item.RollSalt}")
+                                .WithIconUrl(Asset.SHIELD);
                         })
                         .WithAuthor(author =>
                         {
@@ -309,15 +322,16 @@ namespace dm.Banotto
                 // send update to fair channel
                 var fairChan = await Context.Guild.GetTextChannelAsync(_config.FairChannelId);
                 var builder = new EmbedBuilder()
-                    .WithColor(new Color(0xE5EA0F))
+                    .WithColor(Color.SHIELD)
                     .WithFooter(footer =>
                     {
-                        footer.WithText($"Round completed on {item.Completed.ToDate()}");
+                        footer.WithText($"Round completed on {item.Completed.ToDate()}")
+                            .WithIconUrl(Asset.CLOCK);
                     })
                     .WithAuthor(author =>
                     {
                         author.WithName($"Pick Number Lotto | Round #{item.RoundId} ({roundTypeStr})")
-                            .WithIconUrl(Context.Client.CurrentUser.GetAvatarUrl());
+                            .WithIconUrl(Asset.SHIELD);
                     })
                     .AddField($"Provably Fair Information",
                         $"Roll: {item.Roll1}{item.Roll2}{item.Roll3}\n" +

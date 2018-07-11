@@ -185,15 +185,16 @@ namespace dm.Banotto
             string roundTypeStr = Utils.GetRoundTypeName(item.Round.RoundType);
 
             var builder = new EmbedBuilder()
-                .WithColor(new Color(0x15DB00))
+                .WithColor(Color.SUCCESS)
                 .WithFooter(footer =>
                 {
-                    footer.WithText($"Bet #{item.BetId} — Round ends in {Utils.ConvertToCompoundDuration(secsLeft)}");
+                    footer.WithText($"Bet #{item.BetId} — Round ends in {Utils.ConvertToCompoundDuration(secsLeft)}")
+                        .WithIconUrl(Asset.CLOCK);
                 })
                 .WithAuthor(author =>
                 {
                     author.WithName($"Pick Number Lotto | Round #{item.RoundId} ({roundTypeStr})")
-                    .WithIconUrl("https://media.discordapp.net/attachments/463783547900264498/465976265715875851/tip.png");
+                        .WithIconUrl(Asset.SUCCESS);
                 })
                 .AddField($"{play} play '{item.Pick1}{item.Pick2}{item.Pick3}'{quick}, placed by @{user} for {item.Amount.AddCommas()}.",
                     $"They could win a total of {win.AddCommas()}!");
