@@ -63,7 +63,8 @@ namespace dm.Banotto
             int? roll2 = null;
             int? roll3 = null;
             Random random = new Random();
-            string pSalt = Utils.LongRandom(random).ToString();
+            string pSalt1 = Utils.LongRandom(random).ToString();
+            string pSalt2 = Utils.LongRandom(random).ToString();
             switch (roundType)
             {
                 case RoundType.Pick1:
@@ -102,7 +103,7 @@ namespace dm.Banotto
                     game.MaxAnyWin = game.MaxAnyBet * PICK3_MULTI_ANY;
                     break;
             }
-            string salt = $"{roll1}{roll2}{roll3}-{pSalt}";
+            string salt = $"{roll1}{roll2}{roll3}-{pSalt1}.{pSalt2}";
 
             var r = new Round
             {
@@ -175,13 +176,20 @@ namespace dm.Banotto
 
             var msg = await Context.Channel.SendMessageAsync(string.Empty, embed: embed).ConfigureAwait(false);
 
-            var pins = await msg.Channel.GetPinnedMessagesAsync().ConfigureAwait(false);
-            var botPins = pins.Where(x => x.Author.Id == Context.Client.CurrentUser.Id);
-            foreach (IUserMessage pin in botPins)
+            try
             {
-                await pin.UnpinAsync().ConfigureAwait(false);
+                var pins = await msg.Channel.GetPinnedMessagesAsync().ConfigureAwait(false);
+                var botPins = pins.Where(x => x.Author.Id == Context.Client.CurrentUser.Id);
+                foreach (IUserMessage pin in botPins)
+                {
+                    await pin.UnpinAsync().ConfigureAwait(false);
+                }
+                await msg.PinAsync().ConfigureAwait(false);
             }
-            await msg.PinAsync().ConfigureAwait(false);
+            catch (Exception ex)
+            {
+                await Context.Channel.SendMessageAsync($"Pin Error: {ex.Message}");
+            }
         }
 
         [Command("status"), Summary("Round status.")]
@@ -228,11 +236,13 @@ namespace dm.Banotto
 
                 var builder = new EmbedBuilder()
                     .WithColor(Color.INFO)
-                    .WithFooter(footer => {
+                    .WithFooter(footer =>
+                    {
                         footer.WithText(footerText)
                             .WithIconUrl(Asset.CLOCK);
                     })
-                    .WithAuthor(author => {
+                    .WithAuthor(author =>
+                    {
                         author.WithName($"Pick Number Lotto | Round #{item.RoundId} ({roundTypeStr})")
                             .WithIconUrl(Asset.INFO);
                     })
@@ -254,7 +264,8 @@ namespace dm.Banotto
             {
                 var builder = new EmbedBuilder()
                     .WithColor(Color.INFO)
-                    .WithAuthor(author => {
+                    .WithAuthor(author =>
+                    {
                         author.WithName("Pick Number Lotto Poll")
                             .WithIconUrl(Asset.INFO);
                     })
