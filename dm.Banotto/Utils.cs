@@ -52,11 +52,12 @@ namespace dm.Banotto
 
         public static long LongRandom(Random rand)
         {
-            byte[] buf = new byte[8];
-            rand.NextBytes(buf);
-            long longRand = BitConverter.ToInt64(buf, 0);
-
-            return (Math.Abs(longRand % (long.MaxValue - 1125899906842624)) + 1125899906842624);
+            long r = 0;
+            while (r <= 1125899906842624)
+            {
+                r = (long)(rand.NextDouble() * Int64.MaxValue);
+            }
+            return r;
         }
 
         //public static string BanHelpPick1(int Min, int Max, string Admin, int RoundTime)
