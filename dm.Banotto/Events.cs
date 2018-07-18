@@ -127,11 +127,11 @@ namespace dm.Banotto
                 if (item.BetId > 0)
                 {
                     var betMsg = reaction.Channel.GetCachedMessage(item.UserBetMessageId);
-                    string user = betMsg.Author.Username;
+                    var user = (IGuildUser)betMsg.Author;
 
                     if (reaction.Emote.Name == _config.EmoteGood)
                     {
-                        await BetConfirmation(item, betMsg, user).ConfigureAwait(false);
+                        await BetConfirmation(item, betMsg, user.Nickname ?? user.Username).ConfigureAwait(false);
                     }
                     else if (reaction.Emote.Name == _config.EmoteBad)
                     {
@@ -192,16 +192,15 @@ namespace dm.Banotto
                 .WithColor(Color.SUCCESS)
                 .WithFooter(footer =>
                 {
-                    footer.WithText($"Bet #{item.BetId} — Round ends in {Utils.ConvertToCompoundDuration(secsLeft)}")
+                    footer.WithText($"Round #{item.RoundId} ({roundTypeStr}) ends in {Utils.ConvertToCompoundDuration(secsLeft)}")
                         .WithIconUrl(Asset.CLOCK);
                 })
                 .WithAuthor(author =>
                 {
-                    author.WithName($"Pick Number Lotto | Round #{item.RoundId} ({roundTypeStr})")
+                    author.WithName($"{play} play '{item.Pick1}{item.Pick2}{item.Pick3}'{quick}, placed by @{user} for {item.Amount.AddCommas()}")
                         .WithIconUrl(Asset.SUCCESS);
                 })
-                .AddField($"{play} play '{item.Pick1}{item.Pick2}{item.Pick3}'{quick}, placed by @{user} for {item.Amount.AddCommas()}.",
-                    $"They could win a total of {win.AddCommas()}!");
+                .WithDescription($"They could win a total of **{win.AddCommas()}**!");
             var embed = builder.Build();
 
             await betMsg.Channel.SendMessageAsync(string.Empty, embed: embed).ConfigureAwait(false);
