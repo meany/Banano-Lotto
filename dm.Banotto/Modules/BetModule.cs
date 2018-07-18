@@ -148,26 +148,26 @@ namespace dm.Banotto
             if (round.Ends.HasValue)
             {
                 int secsLeft = (int)(round.Ends.Value - DateTime.Now).TotalSeconds;
-                footerText = $"Round ends in {Utils.ConvertToCompoundDuration(secsLeft)}";
+                footerText = $"ends in {Utils.ConvertToCompoundDuration(secsLeft)}";
             }
             else
             {
-                footerText = "Round has no end time";
+                footerText = "has no end time";
             }
 
             var builder = new EmbedBuilder()
                 .WithColor(Color.ERROR)
                 .WithFooter(footer =>
                 {
-                    footer.WithText(footerText)
+                    footer.WithText($"Round #{round.RoundId} ({roundTypeStr}) {footerText}")
                         .WithIconUrl(Asset.CLOCK);
                 })
                 .WithAuthor(author =>
                 {
-                    author.WithName($"Pick Number Lotto | Round #{round.RoundId} ({roundTypeStr})")
+                    author.WithName($"Bet Error")
                         .WithIconUrl(Asset.ERROR);
                 })
-                .AddField("Bet Error", errorText);
+                .WithDescription(errorText);
             var embed = builder.Build();
 
             await Context.Message.Channel.SendMessageAsync(Context.Message.Author.Mention, embed: embed).ConfigureAwait(false);
