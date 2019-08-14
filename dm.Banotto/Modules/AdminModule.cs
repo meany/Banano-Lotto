@@ -53,9 +53,10 @@ namespace dm.Banotto
         private async Task OpenRound(RoundType roundType)
         {
             var dealer = Context.Message.Author;
-            Game game = new Game
+            var game = new Game
             {
                 Dealer = dealer.ToString(),
+                DealerId = dealer.Id,
                 RoundType = roundType
             };
 
@@ -131,11 +132,13 @@ namespace dm.Banotto
         {
             var betText = string.Empty;
             var playText = string.Empty;
+            string max = string.Empty;
             if (game.RoundType == RoundType.Pick1)
             {
                 betText = $"```ml\nMin Bet: {game.MinSingleBet.AddCommas()} -> wins {game.MinSingleWin.AddCommas()}\n" +
                     $"Max Bet: {game.MaxSingleBet.AddCommas()} -> wins {game.MaxSingleWin.AddCommas()}```";
                 playText = $"Random, single number bet:```md\n.t <amount> @{game.Dealer} q```Bet number **0**:```md\n.t <amount> @{game.Dealer} 0```";
+                max = game.MaxSingleBet.AddCommas();
             }
             else
             {
@@ -151,6 +154,7 @@ namespace dm.Banotto
                 {
                     playText = $"Random, straight number bet:```md\n.t <amount> @{game.Dealer} q s```Bet number **420**, any way (420, 024, etc.):```md\n.t <amount> @{game.Dealer} 420 a```";
                 }
+                max = $"{game.MaxStraightBet.AddCommas()} (straight)/{game.MaxAnyBet.AddCommas()} (any)";
             }
 
             var builder = new EmbedBuilder()
@@ -168,7 +172,8 @@ namespace dm.Banotto
                 .AddField($"— Game Type: {game.RoundTypeLabel}",
                     $"Runs for **{Utils.ConvertToCompoundDuration(game.RoundTime)}** after the *first bet* is placed" + betText)
                 .AddField("— Two Ways To Play", playText)
-                .AddField("— Important Terms",
+                .AddField("— Other Information",
+                    $"Bet as many times as you'd like, but your total bet amount per round cannot exceed {max}.\n" +
                     "Any bets not in range will be returned.\n" +
                     "Any bets with weird numbers/letters/combos the bot cannot parse will be returned.\n" +
                     "**Refund not guaranteed.**");
@@ -176,19 +181,28 @@ namespace dm.Banotto
 
             var msg = await Context.Channel.SendMessageAsync(string.Empty, embed: embed).ConfigureAwait(false);
 
-            try
+            // pin round if different type or different dealer
+            var prevRound = await _db.Rounds
+                .Where(x => x.RoundStatus == RoundStatus.Complete)
+                .OrderByDescending(x => x.Completed)
+                .FirstOrDefaultAsync()
+                .ConfigureAwait(false);
+            if (prevRound.RoundType != game.RoundType || prevRound.DealerId != game.DealerId)
             {
-                var pins = await msg.Channel.GetPinnedMessagesAsync().ConfigureAwait(false);
-                var botPins = pins.Where(x => x.Author.Id == Context.Client.CurrentUser.Id);
-                foreach (IUserMessage pin in botPins)
+                try
                 {
-                    await pin.UnpinAsync().ConfigureAwait(false);
+                    var pins = await msg.Channel.GetPinnedMessagesAsync().ConfigureAwait(false);
+                    var botPins = pins.Where(x => x.Author.Id == Context.Client.CurrentUser.Id);
+                    foreach (IUserMessage pin in botPins)
+                    {
+                        await pin.UnpinAsync().ConfigureAwait(false);
+                    }
+                    await msg.PinAsync().ConfigureAwait(false);
                 }
-                await msg.PinAsync().ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                await Context.Channel.SendMessageAsync($"Pin Error: {ex.Message}");
+                catch (Exception ex)
+                {
+                    await Context.Channel.SendMessageAsync($"Pin Error: {ex.Message}");
+                }
             }
         }
 
@@ -296,9 +310,9 @@ namespace dm.Banotto
                 .Include(x => x.Bets)
                 .FirstOrDefaultAsync()
                 .ConfigureAwait(false);
-            item.Bets.RemoveAll(x => x.Confirmed != true);
             if (item != null)
             {
+                item.Bets.RemoveAll(x => x.Confirmed != true);
                 item.TotalBets = item.Bets.Count;
                 item.TotalAmount = item.Bets.Sum(x => x.Amount);
                 string roundTypeStr = Utils.GetRoundTypeName(item.RoundType);
@@ -371,6 +385,13 @@ namespace dm.Banotto
 
             var client = Context.Client as DiscordSocketClient;
             await client.SetGameAsync("CLOSED").ConfigureAwait(false);
+
+            var pins = await Context.Channel.GetPinnedMessagesAsync().ConfigureAwait(false);
+            var botPins = pins.Where(x => x.Author.Id == Context.Client.CurrentUser.Id);
+            foreach (IUserMessage pin in botPins)
+            {
+                await pin.UnpinAsync().ConfigureAwait(false);
+            }
         }
 
         private string GenRollEmoji(int? roll1, int? roll2, int? roll3)

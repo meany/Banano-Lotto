@@ -29,6 +29,7 @@ namespace dm.Banotto
         public int MaxAnyBet { get; set; }
         public int MaxAnyWin { get; set; }
 
+        public ulong DealerId { get; set; }
         public string Dealer { get; set; }
     }
 }

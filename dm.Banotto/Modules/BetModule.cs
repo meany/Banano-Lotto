@@ -80,9 +80,23 @@ namespace dm.Banotto
                                 break;
                         }
 
+                        // parse bet itself
                         if (b.Amount >= min && b.Amount <= max)
                         {
-                            if (round.RoundType == RoundType.Pick1)
+                            // can only bet max
+                            int total = round.Bets
+                                .Where(x => x.UserId == Context.User.Id &&
+                                    (round.RoundType == RoundType.Pick1 || x.PlayType == b.PlayType))
+                                .Sum(x => x.Amount);
+                            int userTotal = total + b.Amount.Value;
+                            if (userTotal > max)
+                            {
+                                await SendBetError(round, roundTypeStr,
+                                    $"Bet amount **{b.Amount.Value.AddCommas()}** is too high.\nFor this round, the max bet is **{max.AddCommas()}** for {b.PlayType} and you've bet a total of **{total.AddCommas()}**.\n" +
+                                    string.Format(REFUND, dealer)).ConfigureAwait(false);
+                            }
+                            // parse picks
+                            else if (round.RoundType == RoundType.Pick1)
                             {
                                 if (b.Pick1 >= 0 && b.Pick1 <= 9 &&
                                     (b.Quick || (!b.Pick2.HasValue && !b.Pick3.HasValue)))
@@ -92,7 +106,7 @@ namespace dm.Banotto
                                 else
                                 {
                                     await SendBetError(round, roundTypeStr,
-                                        $"Picks not parsed (out of range, 0 - 9)\n" +
+                                        $"Picks not parsed (out of range, **0** - **9**)\n" +
                                             string.Format(REFUND, dealer)).ConfigureAwait(false);
                                 }
                             }
@@ -107,7 +121,7 @@ namespace dm.Banotto
                                 else
                                 {
                                     await SendBetError(round, roundTypeStr,
-                                        $"Picks not parsed (out of range, 00 - 99)\n" +
+                                        $"Picks not parsed (out of range, **00** - **99**)\n" +
                                             string.Format(REFUND, dealer)).ConfigureAwait(false);
                                 }
                             }
@@ -121,7 +135,7 @@ namespace dm.Banotto
                                 else
                                 {
                                     await SendBetError(round, roundTypeStr,
-                                        $"Picks not parsed (out of range, 000 - 999)\n" +
+                                        $"Picks not parsed (out of range, **000** - **999**)\n" +
                                             string.Format(REFUND, dealer)).ConfigureAwait(false);
                                 }
                             }
@@ -130,7 +144,7 @@ namespace dm.Banotto
                         {
                             string playType = (round.RoundType == RoundType.Pick1) ? PlayType.Single.ToString() : b.PlayType.Value.ToString();
                             await SendBetError(round, roundTypeStr,
-                                $"Bet amount not parsed (out of range, {min} - {max} for {playType} play)\n" +
+                                $"Bet amount not parsed (out of range, **{min}** - **{max}** for **{playType}** play)\n" +
                                 string.Format(REFUND, dealer)).ConfigureAwait(false);
                         }
                     }
